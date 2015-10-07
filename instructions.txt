@@ -1,0 +1,18 @@
+git clone https://github.com/FStarLang/FStar.git
+git clone https://github.com/Z3Prover/z3.git
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+echo "deb http://download.mono-project.com/repo/debian wheezy main" | sudo tee /etc/apt/sources.list.d/mono-xamarin.list
+sudo apt-get update
+upgrade all packages.
+sudo apt-get install mono-complete fsharp mono-devel
+
+cd Z3Prover
+python scripts/mk_make.py
+cd build
+make
+sudo make install
+
+cd FStar
+make -C src
+source setenv.sh
+make test.net -C src

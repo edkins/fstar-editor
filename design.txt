@@ -1,0 +1,12 @@
+There is an opaque "buffer" module. Other modules depend on buffer.
+
+InsertChar
+DeleteChar. Precondition: cursor is not at the end of the file
+MoveCursorLeft. Precondition: cursor is not at the beginning of the line
+MoveCursorBack. Precondition: cursor is not at the beginning of the file
+etc.
+
+We can define "simple" versions of these interfaces that make certain assumptions about the text editor (e.g. that no-one else is editing it at the same time, or that there is no extra information such as breakpoints and bookmarks attached to points within the buffer).
+
+Then later on we can define more complex versions of the interfaces and prove that the simple versions are a degenerate case.
+
