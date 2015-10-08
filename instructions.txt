@@ -4,7 +4,7 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3FA7E0328081BFF6A1
 echo "deb http://download.mono-project.com/repo/debian wheezy main" | sudo tee /etc/apt/sources.list.d/mono-xamarin.list
 sudo apt-get update
 upgrade all packages.
-sudo apt-get install mono-complete fsharp mono-devel
+sudo apt-get install mono-complete fsharp mono-devel ocaml-findlib ocaml-batteries-included
 
 cd Z3Prover
 python scripts/mk_make.py
@@ -16,3 +16,5 @@ cd FStar
 make -C src
 source setenv.sh
 make test.net -C src
+make -C src ocaml
+make -C src/ocaml-output
