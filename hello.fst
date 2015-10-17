@@ -1,3 +1,7 @@
+(*--build-config
+options:--admit_fsi FStar.Set;
+other-files:set.fsi heap.fst st.fst all.fst io.fsti string.fst list.fst char.fst;
+--*)
 module Hello
 open FStar.IO
 open FStar.ST

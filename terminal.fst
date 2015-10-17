@@ -7,41 +7,16 @@ module Terminal
 open FStar.List
 open FStar.Char
 
-(*
-type vector : Type -> nat -> Type =
-   | Nil :  vector 'a 0
-   | Cons : hd:'a -> n:nat -> tl:vector 'a n -> vector 'a (n + 1)
-   
-*)
+val listmod : nat -> ('a -> Tot 'a) -> list 'a -> Tot (list 'a)
+let rec listmod n f xs' = match xs' with
+  | [] -> []
+  | x::xs -> match n with
+    | 0 -> f x::xs
+    | _ -> x::listmod (n-1) f xs
 
-type vector 't (n:nat) : Type = x:list 't{length x = n}
-
-val vtail : (n:nat) -> vector 't (n+1) -> Tot (vector 't n)
-let vtail n (x::xs) = xs
-
-val vnth : (n:nat) -> vector 't n -> i:nat{i<n} -> Tot 't
-let rec vnth n (x::xs) i =
-  match i with
-  | 0 -> x
-  | _ -> vnth (n-1) xs (i-1)
-
-val vmod : (n:nat) -> i:nat{i<n} -> ('t -> Tot 't) -> vector 't n -> Tot (vector 't n)
-let rec vmod n i f (x::xs) =
-  match i with
-  | 0 -> f x::xs
-  | _ -> x :: vmod (n-1) (i-1) f xs
-
-val vset : n:nat -> i:nat{i<n} -> 't -> vector 't n -> Tot (vector 't n)
-let vset n i x v = vmod n i (fun _ -> x) v
-
-type grid 't (w:nat) (h:nat) : Type = x:vector (list 't) h {forall (i:nat). i < h ==> length (vnth h x i) = w}
-type grid2 't (w:nat) (h:nat) : Type = vector (vector 't w) h
-
-val gridModRow : w:nat -> h:nat -> y:nat{y<h} -> (vector 't w -> Tot (vector 't w)) -> grid2 't w h -> Tot (grid2 't w h)
-let gridModRow w h y f g = vmod h y f g
-
-val gridWith : w:nat -> h:nat -> x:nat{x<w} -> y:nat{y<h} -> 't -> grid2 't w h -> Tot (grid2 't w h)
-let gridWith w h x y v g = vmod h y (vset w x v) g
+val gridWith : nat -> nat -> 'a -> list (list 'a) -> Tot (list (list 'a))
+let gridWith x y c g =
+  listmod y (fun row -> listmod x (fun _->c) row) g
 
 type terminalState : Type =
   | StateDefault : terminalState
@@ -49,12 +24,11 @@ type terminalState : Type =
 
 type terminalScreen : Type =
   | Screen :
-      width:nat{width=80} ->
-      height:nat{height=25} ->
-      (cx:nat{cx<width}) ->
-      (cy:nat{cy<height}) ->
-//      xss:list (xs:list nat{length xs=width}){xss=[]} -> 
-      xss:list (xs:list nat{length xs=width}){xss=[]} -> 
+      width:nat ->
+      height:nat ->
+      cx:nat ->
+      cy:nat ->
+      list (list char) ->
       terminalScreen
 
 type terminal : Type = option (terminalState * terminalScreen)
@@ -65,7 +39,7 @@ let isPrintableChar ch =
 
 val screenPrint : char -> terminalScreen -> Tot (option terminalScreen)
 let screenPrint ch (Screen w h cx cy chars) =
-  let chars' = gridWith w h cx cy ch chars in
+  let chars' = gridWith cx cy ch chars in
   if cx = w - 1 then
   (
     if cy = h - 1 then
