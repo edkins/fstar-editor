@@ -24,3 +24,4 @@ Follow these instructions to get fstar emacs mode working:
 https://github.com/rolandwalker/unicode-fontsh
 https://github.com/FStarLang/fstar-mode.el
 M-x fstar-subp-toggle-debug
+M-x customize-variable RET fstar-enabled-modules RET
