@@ -1,6 +1,6 @@
 (*--build-config
-options: --admit_fsi FStar.Set --admit_fsi FStar.IO
-other-files:set.fsi heap.fst st.fst all.fst io.fsti string.fst list.fst char.fst
+options:--admit_fsi FStar.Set;
+other-files:set.fsi heap.fst st.fst all.fst io.fsti string.fst list.fst char.fst;
 --*)
 module Terminal
 
@@ -11,6 +11,7 @@ open FStar.Char
 type vector : Type -> nat -> Type =
    | Nil :  vector 'a 0
    | Cons : hd:'a -> n:nat -> tl:vector 'a n -> vector 'a (n + 1)
+   
 *)
 
 type vector 't (n:nat) : Type = x:list 't{length x = n}
@@ -46,16 +47,15 @@ type terminalState : Type =
   | StateDefault : terminalState
   | StateEscape : string -> terminalState
 
-type terminalScreenWH (width:nat) (height:nat) : Type =
-  | ScreenWH :
+type terminalScreen : Type =
+  | Screen :
+      width:nat{width=80} ->
+      height:nat{height=25} ->
       (cx:nat{cx<width}) ->
       (cy:nat{cy<height}) ->
-      //xss:list (xs : list char{length xs = width}) {length xss = height} ->
-      grid2 char width height ->
-      terminalScreenWH width height
-
-type terminalScreen : Type =
-  | Screen : width:nat -> height:nat -> terminalScreenWH width height -> terminalScreen
+//      xss:list (xs:list nat{length xs=width}){xss=[]} -> 
+      xss:list (xs:list nat{length xs=width}){xss=[]} -> 
+      terminalScreen
 
 type terminal : Type = option (terminalState * terminalScreen)
 
@@ -64,24 +64,24 @@ let isPrintableChar ch =
   (int_of_char ch >= int_of_char ' ') && (int_of_char ch <= int_of_char '~')
 
 val screenPrint : char -> terminalScreen -> Tot (option terminalScreen)
-let screenPrint ch (Screen w h (ScreenWH cx cy chars)) =
+let screenPrint ch (Screen w h cx cy chars) =
   let chars' = gridWith w h cx cy ch chars in
   if cx = w - 1 then
   (
     if cy = h - 1 then
       None
     else
-      Some (Screen w h (ScreenWH 0 (cy+1) chars'))
+      Some (Screen w h 0 (cy+1) chars')
   )
   else
-    Some (Screen w h (ScreenWH (cx+1) cy chars'))
+    Some (Screen w h (cx+1) cy chars')
 
 val screenNextLine : terminalScreen -> Tot (option terminalScreen)
-let screenNextLine (Screen w h (ScreenWH cx cy chars)) =
+let screenNextLine (Screen w h cx cy chars) =
   if cy = h - 1 then
     None
   else
-    Some (Screen w h (ScreenWH 0 (cy+1) chars))
+    Some (Screen w h 0 (cy+1) chars)
 
 val screenNop : terminalScreen -> Tot (option terminalScreen)
 let screenNop screen = Some screen
