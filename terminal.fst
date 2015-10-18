@@ -41,7 +41,7 @@ type terminal : Type = option (terminalState * terminalScreen)
 
 val isPrintableChar : char -> Tot bool
 let isPrintableChar ch =
-  (int_of_char ch >= int_of_char ' ') && (int_of_char ch <= int_of_char '~')
+  ch <> '\n' && (int_of_char ch >= int_of_char ' ') && (int_of_char ch <= int_of_char '~')
 
 val esc : char
 let esc = char_of_byte 27
@@ -85,15 +85,15 @@ let rec listins xs' n y = match xs' with
     | 0 -> y::init xs'
     | _ -> x::listins xs (n-1) y
 
-val screenInsertChar : char -> terminalScreen -> Tot (option terminalScreen)
+val screenInsertChar : char -> terminalScreen -> Tot (terminalScreen)
 let screenInsertChar ch (Screen w h cx cy chars) =
   let chars' = listmod cy (fun row -> listins row cx ch) chars in
-  Some (Screen w h cx cy chars')
+  Screen w h cx cy chars'
 
 val screenDoEscape : list char -> terminalScreen -> Tot (option terminalScreen)
 let screenDoEscape str screen =
   match charsstr str with
-    | "[@" -> screenInsertChar ' ' screen
+    | "[@" -> Some (screenInsertChar ' ' screen)
     | _ -> None
 
 val endsEscape : char -> Tot bool
