@@ -160,98 +160,30 @@ val grow_char : char -> editorChar -> Tot (list editorChar)
 let grow_char ch (c,cursor) = if cursor then [(ch,false);(c,cursor)] else [(c,cursor)]
 
 val line_insert : char -> list editorChar -> Tot (list editorChar)
-let line_insert ch es = concatMap (grow_char ch) es
+let line_insert ch es' = match es' with
+  | [] -> []
+  | (c,b)::es ->
+    if b then
+      (ch,false)::(c,b)::es
+    else
+      (c,b)::line_insert ch es
 
 val lines_insert : char -> list (list editorChar) -> Tot (list (list editorChar))
-let lines_insert ch b = map (line_insert ch) b
-
-(* The effect of inserting a character into appended lines *)
-val line_ins_append : ch:char -> es:list editorChar -> ess:list (list editorChar) ->
-  Lemma (lines_insert ch (es::ess) = line_insert ch es::lines_insert ch ess)
-let line_ins_append ch es ess = ()
-
-(*
-val has_no_linebreaks : list editorChar -> Tot bool
-let rec has_no_linebreaks es' = match es' with
-  | [] -> true
-  | e::es -> not(isLineBreak e) && has_no_linebreaks es
-
-val only_has_linebreak_at_end : list editorChar -> Tot bool
-let rec only_has_linebreak_at_end es' = match es' with
-  | [] -> false
-  | [e] -> isLineBreak e
-  | e::f::es -> not(isLineBreak e) && only_has_linebreak_at_end (f::es)
-
-val grow_no_linebreaks : ch:char{ch<>'\n'} -> e:editorChar{not(isLineBreak e)} ->
-  Lemma (has_no_linebreaks (grow_char ch e))
-let grow_no_linebreaks ch (c,b) =
-  if b then (
-    assert(grow_char ch (c,b) = [(ch,false);(c,b)]);
-    assert(has_no_linebreaks [(c,b)]);
-    assert(not(isLineBreak((ch,false))));
-    assert(has_no_linebreaks([(ch,false);(c,b)]));
-    ()
-  ) else (
-    assert(grow_char ch (c,b) = [(c,b)]);
-    ()
-  )
-  
-val grow_only_linebreak_at_end : ch:char{ch<>'\n'} -> e:editorChar{isLineBreak e} ->
-  Lemma (only_has_linebreak_at_end (grow_char ch e))
-let grow_only_linebreak_at_end ch (c,b) =
-  if b then (
-    assert(grow_char ch (c,b) = [(ch,false);(c,b)]);
-    ()
-  ) else (
-    assert(grow_char ch (c,b) = [(c,b)]);
-    ()
-  )
-
-(* Appending a has_no_linebreaks *)
-val appending_no_linebreaks : es:list editorChar{has_no_linebreaks es} -> fs:list editorChar ->
-  Lemma (listLines (es @@ fs) = (es @@ hd (listLines fs)) :: tl (listLines fs))
-let rec appending_no_linebreaks es' fs =
-  match es' with
-    | [] -> ()
-    | (e::es) ->
-      assert(not(isLineBreak e));
-      //assert listLines ((e::es)@fs) = (e::hd (listLines (es@@fs)))::tl (listLines (es@@fs))
-      appending_no_linebreaks es fs;
-      ()
-
-(* Appending only_has_linebreak_at_end *)
-val appending_only_linebreak_at_end : es:list editorChar{only_has_linebreak_at_end es} -> fs:list editorChar ->
-  Lemma (listLines (es @@ fs) = es :: listLines fs)
-let rec appending_only_linebreak_at_end es' fs =
-  match es' with
-    | [] -> assert(false)
-    | [e] ->
-      assert(isLineBreak e);
-      ()
-    | e::e'::es ->
-      assert(not(isLineBreak e));
-      appending_only_linebreak_at_end (e'::es) fs;
-      ()
-*)
+let lines_insert ch ess = match ess' with
+  | [] -> []
+  | []::ess -> lines_insert ch ess
+  | ((c,b)::es)::ess ->
+    if b then
+      ((ch,false)::(c,b)::es)::ess
+    else
+      (c,b)::lines_insert ch (es::ess)
 
 val listLines_cons : e:editorChar{~isLineBreak e} -> es:list editorChar ->
   Lemma (listLines (e::es) = hdcons e (listLines es))
 let listLines_cons e es = ()
 
-val lines_ins_linebreak : e:editorChar{isLineBreak e} -> es:list editorChar -> ch:char{isPrintableChar ch} ->
-  Lemma (listLines (line_insert ch (e::es)) = lines_insert ch (listLines (e::es)))
-let lines_ins_linebreak :
-	assert(not(isLineBreak (ch,false)));
-	assert(isLineBreak e);
-	grow_only_linebreak_at_end ch e;
-        assert(only_has_linebreak_at_end (grow_char ch e));
-	lines_ins es ch;
-	line_ins_append ch [e] (listLines es);
-        assert(line_insert ch (e::es) = (grow_char ch e @@ line_insert ch es));
-	appending_only_linebreak_at_end (grow_char ch e) (line_insert ch es);
-	assert(listLines (line_insert ch (e::es)) = listLines (grow_char ch e @@ line_insert ch es));
-	assert(listLines (line_insert ch (e::es)) = lines_insert ch (listLines (e::es)));
-	assert(listLines (line_insert ch es') = lines_insert ch (listLines es'))
+val lines_insert_hdcons_false : ch:char -> c:char -> b:bool -> ess:list (list editorChar) ->
+  Lemma (lines_insert ch (hdcons (c,b) ess) = if b then hdcons
 
 (* The effect that inserting a character has on lines *)
 val lines_ins : es:list editorChar -> ch:char{isPrintableChar ch} ->
@@ -259,7 +191,14 @@ val lines_ins : es:list editorChar -> ch:char{isPrintableChar ch} ->
 let rec lines_ins es' ch =
   (match es' with
     | [] -> ()
-    | e::es ->
+    | (c,b)::es ->
+      if b then (
+	assert(line_insert ch es' = (ch,false)::(c,b)::line_insert ch es);
+	assert(not(isLineBreak(ch,false)));
+	listLines_cons (ch,false) es'
+      ) else (
+        assert(line_insert ch es' = (c,b)::line_insert ch es);
+      )
       if isLineBreak e then (
       ) else (
 	assert(not(isLineBreak (ch,false)));
