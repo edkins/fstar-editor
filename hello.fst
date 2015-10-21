@@ -170,30 +170,73 @@ let rec line_insert ch es' = match es' with
 
 val lines_insert : char -> list (list editorChar) -> Tot (list (list editorChar))
 let lines_insert ch ess' = map (line_insert ch) ess'
-(*let rec lines_insert ch ess' = match ess' with
-  | [] -> []
-  | es'::ess -> match es' with
-    | [] -> []::lines_insert ch ess
-    | (c,b)::es ->
-      if b then
-        ((ch,false)::(c,b)::es)::ess
-      else
-        let xss = lines_insert ch (es::ess) in
-        ((c,b)::hd xss)::tl xss
+
+let lconcat xss = concatMap (fun x->x) xss
+
+val listSplit_concat : p:('a -> Tot bool) -> xs:list 'a ->
+  Lemma (lconcat (listSplit p xs) = xs)
+let rec listSplit_concat p xs' = match xs' with
+  | [] -> ()
+  | x::xs ->
+    listSplit_concat p xs;
+    if p x then () else ()
+
+val nth' : xs:list 'a -> n:nat{n < length xs} -> Tot 'a
+let rec nth' xs n = match n with
+  | 0 -> hd xs
+  | _ -> nth' (tl xs) (n-1)
+
+type lines_coords 'a (xss:list (list 'a)) = xy:(nat*nat){fst xy < length xss && snd xy < length (nth' xss (fst xy))}
+
+val lines_get : xss:list (list 'a) -> xy:lines_coords 'a xss -> Tot 'a
+let lines_get xss (row,col) = nth' (nth' xss row) col
+
+val take : nat -> list 'a -> Tot (list 'a)
+let rec take n xs' =
+  match n with
+  | 0 -> []
+  | _ -> match xs' with
+    | [] -> []
+    | x::xs -> take (n-1) xs
+
+val sum : list nat -> Tot nat
+let rec sum xs' = match xs' with
+  | [] -> 0
+  | x::xs -> x + sum xs
+
+val length_lconcat_sum : xss:list (list 'a) ->
+  Lemma (length (lconcat xss) = sum (map length xss))
+let rec length_lconcat_sum xss' = match xss' with
+  | [] -> ()
+  | (xs::xss) -> length_lconcat_sum xss
+
+val length_lconcat_length_head : xss:list (list 'a){xss<>[]} ->
+  Lemma (length (lconcat xss) >= length (hd xss))
+let length_lconcat_length_head xss = ()
+
+val firstrow : xss:list (list 'a){xss<>[]} -> col:nat{col < length (hd xss)} -> Tot (n:nat{n < length (lconcat xss)})
+let firstrow xss col = length_lconcat_length_head xss; col
+
+val linearize : xss:list (list 'a) -> lines_coords 'a xss -> Tot (n:nat{n < length (lconcat xss)})
+//let rec linearize xss' (row,col) = sum (map length (take row xss')) + col
+let rec linearize xss' (row,col) = match row with
+  | 0 -> firstrow xss' col
+  | _ -> length (hd xss') + linearize (tl xss') (row-1,col)
+
+val linearize_nth : xss:list (list 'a) -> xy:lines_coords 'a xss ->
+  Lemma (nth (lconcat xss) (linearize xss xy) = lines_get xss xy)
+let linearize_nth xss' (row,col) = ()
+
+(*
+val listSplit_eol : p:('a -> Tot bool) -> xs:list 'a -> xy : lines_coords 'a (listSplit p xs) ->
+  Lemma (p (lines_get (listSplit p xs) xy) <==> snd xy = length (nth' (listSplit p xs) (fst xy)) - 1)
+let rec listSplit_eol p xs' (row,col) = match xs' with
+  | [] -> assert(false)
+  | x::xs -> if p x then
+    listSplit_eol p xs (row-1,col)
+  ()
 *)
-
-val listLines_cons : e:editorChar{not(isLineBreak e)} -> es:list editorChar ->
-  Lemma (listLines (e::es) = (e :: hd (listLines es)) :: tl (listLines es))
-let listLines_cons e es = ()
-
-val lines_insert_hdcons_false : ch:char -> c:char -> ess:list (list editorChar) ->
-  Lemma (lines_insert ch (((c,false) :: hd ess) :: tl ess) = ((c,false) :: hd (lines_insert ch ess)) :: tl (lines_insert ch ess))
-let lines_insert_hdcons_false ch c ess = ()
-
-val lines_insert_hdcons_true : ch:char -> c:char -> ess:list (list editorChar) ->
-  Lemma (lines_insert ch (((c,true) :: hd ess) :: tl ess) = ((ch,false) :: (c,true) :: hd (lines_insert ch ess)) :: tl (lines_insert ch ess))
-let lines_insert_hdcons_true ch c ess = ()
-
+(*
 (* The effect that inserting a character has on lines *)
 val lines_ins : es:list editorChar -> ch:char{isPrintableChar ch} ->
   Lemma (listLines (line_insert ch es) = lines_insert ch (listLines es))
@@ -293,3 +336,4 @@ let rec editor () =
 ;;
    
 editor ()
+*)
